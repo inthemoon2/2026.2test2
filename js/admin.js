@@ -44,7 +44,7 @@ function render() {
     el('td', {}, s.roles.map(r => r.replace('AI 윤리·소통 담당', 'AI윤리').replace('프로젝트 매니저', 'PM').replace('도메인 분석가', '도메인').replace('데이터 엔지니어', '데이터').replace('모델 개발자', '모델')).join(' · ')),
     el('td', {}, s.minutes + '분'), el('td', {}, el('span', { class: 'chip ' + stateClass(s.status) }, s.status)),
     el('td', {}, s.grade || '-'), el('td', {}, s.total === '' ? '-' : `${r1(s.total)}/${s.max}`),
-    el('td', {}, s.leaves ? el('span', { class: 'chip danger' }, `${s.leaves}회`) : '-'),
+    el('td', { style: 'white-space:nowrap' }, s.status === '미접속' ? '-' : leaveCtl(s.sid, s.leaves || 0, s.leaveSec || 0)),
     el('td', { style: 'white-space:nowrap' }, el('button', { class: 'btn small ghost', onclick: () => openDetail(s.sid) }, '상세')))));
 }
 ['fClass', 'fStatus', 'fGrade'].forEach(i => $('#' + i).onchange = render);
@@ -62,12 +62,13 @@ async function openDetail(sid) {
   const r = await adm('adminDetail', { sid });
   if (!r.ok) { body.replaceChildren(el('div', { class: 'msg err' }, r.error), el('button', { class: 'btn gray', onclick: closeDetail }, '닫기')); return; }
   const ses = r.session;
+  const sumLine = el('div', { class: 'sub', style: 'font-weight:700;margin-bottom:6px' }, ses && ses['원점수'] !== '' && ses['원점수'] != null ? `원점수 ${r1(ses['원점수'])} − 감점 ${r1(ses['감점'] || 0)} = 최종 ${r1(ses['총점'])} / ${ses['만점']}` : '');
   body.replaceChildren(
     el('h2', {}, `${r.cls}반 ${r.team}조 · ${r.name} (${r.sid})`),
     el('p', { class: 'sub' }, r.roles.join(', ') + (ses ? ` · 시작 ${ses['시작시각']} · 제출 ${ses['제출시각'] || '-'} · ${ses['상태']}` : ' · 아직 시작 전')),
-    ses ? leaveBox(r, ses, sid) : null,
+    ses ? el('div', {}, sumLine, leaveBox(r, ses, sid, sumLine)) : null,
     ...r.items.map(it => el('div', { class: 'card' },
-      el('div', { class: 'row', style: 'justify-content:space-between' }, el('b', {}, `[${it.role}] ${it.title}`), el('span', { class: 'chip' }, it.score == null ? '미채점' : `${r1(it.score)} / ${it.max}`)),
+      el('div', { class: 'row', style: 'justify-content:space-between' }, el('b', {}, `[${it.role}] ${it.title}`), scoreCtl(sid, it, x => { sumLine.textContent = `원점수 ${r1(x.raw)} − 감점 ${r1(x.pen || 0)} = 최종 ${r1(x.total)} / ${x.sessMax}`; })),
       el('div', { class: 'sub' }, it.q),
       el('div', { class: 'myans' }, it.answer || '(작성 없음)'),
       it.feedback ? el('div', { class: 'fb' }, `💬 ${it.feedback} (${it.mode})`) : null,
@@ -79,24 +80,59 @@ async function openDetail(sid) {
       el('button', { class: 'btn small danger', onclick: async () => { if (!confirm(`${r.name} 학생의 시간과 답안을 모두 지울까요? 되돌릴 수 없어요.`)) return; const x = await adm('adminReset', { sid }); alert(x.ok ? '초기화했어요.' : x.error); closeDetail(); loadStatus(true); } }, '초기화(처음부터)'),
       el('button', { class: 'btn small gray', onclick: closeDetail }, '닫기')));
 }
-// 화면 이탈 기록 + 교사가 확인 후 횟수를 고치거나 0으로 초기화
-function leaveBox(r, ses, sid) {
-  const n = Number(ses['이탈횟수']) || 0, log = String(ses['이탈기록'] || '');
-  const setTo = async to => {
-    const x = await adm('adminSetLeaves', { sid, count: to });
-    if (!x.ok) return alert(x.error);
-    openDetail(sid); loadStatus(true);
+// ── 화면 이탈: 표와 상세 창 어디서든 −/+ 로 바로 고침 (서버에 즉시 저장, 점수 자동 재계산)
+const fmtSec = s => { s = Math.round(Number(s) || 0); return s >= 60 ? `${Math.floor(s / 60)}분 ${s % 60}초` : `${s}초`; };
+async function setLeaves(sid, to, after) {
+  if (to < 0) return;
+  const r = await adm('adminSetLeaves', { sid, count: to });
+  if (!r.ok) return alert(r.error);
+  const s = LIST.find(x => x.sid === sid);
+  if (s) { s.leaves = r.leaves; s.leaveSec = r.leaveSec; if (s.total !== '' && r.total !== '' && r.total != null) s.total = r.total; render(); }
+  if (after) after(r);
+}
+function leaveCtl(sid, n, sec, after, big) {
+  let busy = false;
+  const go = async d => { if (busy) return; busy = true; await setLeaves(sid, n + d, after); busy = false; };
+  return el('span', { class: 'stepper' + (big ? ' big' : ''), title: '실수로 이탈한 경우 − 로 줄이세요' },
+    el('button', { class: 'step', disabled: n <= 0, onclick: () => go(-1) }, '−'),
+    el('span', { class: 'chip ' + (n ? 'danger' : 'ok') }, n ? `${n}회 · ${fmtSec(sec)}` : '0회'),
+    el('button', { class: 'step', onclick: () => go(1) }, '+'));
+}
+// ── 문항 점수: 점수 옆 −/+ (0.5점씩, 0~만점 사이) → 부분 점수
+function scoreCtl(sid, it, onTotals) {
+  const lab = el('span', { class: 'chip' }), dl = el('span', { class: 'sub', style: 'margin-left:6px' });
+  let cur = it.score, busy = false;
+  const paint = () => { lab.textContent = cur == null ? '미채점' : `${r1(cur)} / ${it.max}`; dl.textContent = it.delta ? `(교사 조정 ${it.delta > 0 ? '+' : ''}${r1(it.delta)})` : ''; };
+  const go = async d => {
+    if (busy) return; if (cur == null) return alert('아직 채점되지 않은 문항이에요. 먼저 [다시 채점]을 눌러 주세요.');
+    busy = true;
+    const r = await adm('adminAdjustScore', { sid, qid: it.id, delta: d });
+    busy = false;
+    if (!r.ok) return alert(r.error);
+    cur = r.score; it.delta = r.delta; paint();
+    const s = LIST.find(x => x.sid === sid); if (s) { s.total = r.total; render(); }
+    if (onTotals) onTotals(r);
   };
-  return el('div', { class: 'card', style: n ? 'border-color:var(--danger)' : '' },
-    el('div', { class: 'row', style: 'justify-content:space-between' },
-      el('b', {}, '화면 이탈'),
-      el('span', { class: 'chip ' + (n ? 'danger' : 'ok') }, n ? `${n}회 · 감점 −${n * r.penaltyUnit}점` : '없음')),
-    ses['원점수'] !== '' && ses['원점수'] != null ? el('div', { class: 'sub' }, `원점수 ${r1(ses['원점수'])} → 최종 ${r1(ses['총점'])} / ${ses['만점']}`) : null,
-    log ? el('pre', { class: 'myans', style: 'white-space:pre-wrap;margin:6px 0' }, log) : el('div', { class: 'sub' }, '이탈 기록이 없어요.'),
-    n ? el('div', { class: 'row' },
-      el('button', { class: 'btn small', onclick: () => { if (confirm(`이탈 ${n}회를 확인했고 0회로 초기화할까요? 감점이 없어지고 총점이 다시 계산돼요.`)) setTo(0); } }, '이탈 초기화 (0회)'),
-      el('button', { class: 'btn small ghost', onclick: () => { const v = prompt('이탈 횟수를 몇 회로 고칠까요?', String(Math.max(0, n - 1))); if (v !== null && v.trim() !== '') setTo(Number(v)); } }, '횟수 수정'))
-      : null);
+  paint();
+  return el('span', { class: 'stepper' },
+    el('button', { class: 'step', onclick: () => go(-0.5) }, '−'), lab,
+    el('button', { class: 'step', onclick: () => go(0.5) }, '+'), dl);
+}
+function leaveBox(r, ses, sid, sumEl) {
+  const log = String(ses['이탈기록'] || '');
+  const holder = el('div', { class: 'card' });
+  const draw = (n, sec, logText) => {
+    holder.replaceChildren(
+      el('div', { class: 'row', style: 'justify-content:space-between' },
+        el('b', {}, '화면 이탈 (횟수 · 벗어난 시간)'),
+        leaveCtl(sid, n, sec, x => { draw(x.leaves, x.leaveSec, logText + '\n↺ 교사가 수정'); setSum(x); }, true)),
+      n ? el('div', { class: 'sub' }, `감점 −${n * r.penaltyUnit}점 (1회당 ${r.penaltyUnit}점). 실수라면 − 로 횟수를 줄이세요. 0회가 되면 이탈 시간도 0으로 초기화돼요.`) : el('div', { class: 'sub' }, '이탈 기록이 없어요.'),
+      logText ? el('pre', { class: 'myans', style: 'white-space:pre-wrap;margin:6px 0' }, logText) : null);
+  };
+  const setSum = x => { if (sumEl && x && x.total !== '' && x.total != null) sumEl.textContent = `원점수 ${r1(x.raw)} − 감점 ${r1(x.pen || 0)} = 최종 ${r1(x.total)} / ${x.max || x.sessMax}`; };
+  holder._setSum = setSum;
+  draw(Number(ses['이탈횟수']) || 0, Number(ses['이탈시간(초)']) || 0, log);
+  return holder;
 }
 function closeDetail() { $('#mDetail').classList.add('hidden'); }
 $('#mDetail').addEventListener('click', e => { if (e.target.id === 'mDetail') closeDetail(); });
@@ -133,7 +169,7 @@ $('#exportBtn').onclick = async () => {
   note('#exportMsg', '만드는 중…', 'info');
   const r = await adm('adminExport', {}, 120000);
   if (!r.ok) return note('#exportMsg', r.error);
-  const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const esc = v => { let s = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(s) && isNaN(Number(s))) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; }; // 엑셀 수식 주입 방지
   const csv = '﻿' + [r.head, ...r.rows].map(row => row.map(esc).join(',')).join('\r\n');
   const a = el('a', { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })), download: `이해도점검_전체답안_${new Date().toISOString().slice(0, 10)}.csv` });
   document.body.append(a); a.click(); a.remove();

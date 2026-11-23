@@ -97,3 +97,10 @@ th{background:var(--bg);position:sticky;top:0;white-space:nowrap}
   .pdf-holder{position:static;left:0}
 }
 @media(max-width:560px){ .timer{font-size:1.2rem} .wrap{padding:14px 12px 90px} }
+
+/* 교사 페이지: 점수·이탈 −/+ 조정 */
+.stepper{display:inline-flex;align-items:center;gap:4px}
+.stepper .step{width:26px;height:26px;padding:0;border:1px solid var(--line,#cbd5e1);border-radius:6px;background:transparent;color:inherit;font-size:1.05rem;line-height:1;cursor:pointer}
+.stepper .step:hover:not(:disabled){background:var(--hover,rgba(120,120,120,.15))}
+.stepper .step:disabled{opacity:.35;cursor:default}
+.stepper.big .step{width:32px;height:32px;font-size:1.2rem}

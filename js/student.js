@@ -108,12 +108,11 @@ function showWrite() {
       el('div', { class: 'hint' }, '💡 ' + q.hint), ta, cnt));
   });
   show('write');
-  away = false;
-  try { const q = Number(localStorage.getItem(lqKey())) || 0; if (q > 0 && !leaveQ) { leaveQ = q; S.leaves = (S.leaves || 0) + q; flushLeaves('재접속'); } } catch (e) { }
+  away = null;
   updLeaveBadge();
   stopTimers();
   tickTimer = setInterval(tick, 500); tick();
-  saveTimer = setInterval(() => { if (dirty) saveNow(); }, 20000);
+  saveTimer = setInterval(() => saveNow(), 20000);
 }
 function stopTimers() { clearInterval(tickTimer); clearInterval(saveTimer); tickTimer = saveTimer = null; }
 
@@ -139,45 +138,45 @@ async function saveNow() {
   else { dirty = true; n.textContent = '⚠ 저장 실패 — 인터넷을 확인하세요 (내용은 이 컴퓨터에 임시 보관 중)'; if (r.timeup || r.done) doSubmit(true); }
 }
 
-/* ───── 화면 이탈 감지 (다른 탭·창·프로그램으로 넘어가면 1회당 감점) ───── */
-let away = false, leaveQ = 0, flushing = false;
-const lqKey = () => 'leaveq_' + (S ? S.sid : '');
+/* ───── 화면 이탈 감지 (다른 탭·창·프로그램으로 넘어가면 1회 감점 + 벗어난 시간 기록) ───── */
+let away = null; // 이탈 중이면 { start }
+const fmtSec = s => s >= 60 ? `${Math.floor(s / 60)}분 ${s % 60}초` : `${s}초`;
+const isAway = () => document.visibilityState !== 'visible' || !document.hasFocus();
 function updLeaveBadge() {
   const b = $('#leaveBadge'), n = S ? (S.leaves || 0) : 0;
   b.classList.toggle('hidden', !n);
-  b.textContent = n ? `⚠ 화면 이탈 ${n}회 (−${n * S.leavePenalty}점)` : '';
+  b.textContent = n ? `⚠ 화면 이탈 ${n}회 · ${fmtSec(S.leaveSec || 0)}` + (S.leavePenalty > 0 ? ` (−${n * S.leavePenalty}점)` : '') : '';
 }
 function watching() { return S && S.status === 'running' && !submitting && !$('#screen-write').classList.contains('hidden'); }
-function onAway(reason) {
-  if (away || !watching()) return;
-  away = true;
-  S.leaves = (S.leaves || 0) + 1; updLeaveBadge();
-  try { localStorage.setItem(lqKey(), String((Number(localStorage.getItem(lqKey())) || 0) + 1)); } catch (e) { }
-  leaveQ++; flushLeaves(reason);
-}
-function onBack() {
-  if (!away) return;
-  away = false;
+function checkAway() {
   if (!watching()) return;
+  if (isAway()) {
+    if (!away) {
+      away = { start: Date.now() };
+      S.leaves = (S.leaves || 0) + 1; updLeaveBadge();
+      sapi('away', { start: away.start }, 20000);
+    }
+  } else if (away) {
+    const rec = away; away = null;
+    sendLeave(rec, Date.now(), 0);
+  }
+}
+function sendLeave(rec, end, attempt) {
+  const secs = Math.max(0, Math.round((end - rec.start) / 1000));
+  if (!attempt) { S.leaveSec = (S.leaveSec || 0) + secs; updLeaveBadge(); showLeaveModal(secs); }
+  sapi('leave', { start: rec.start, end }, 20000).then(r => {
+    if (r.ok && typeof r.leaves === 'number') { S.leaves = r.leaves; S.leaveSec = r.leaveSec; updLeaveBadge(); }
+    else if (r.network && attempt < 5) setTimeout(() => sendLeave(rec, end, attempt + 1), 2000);
+  });
+}
+function showLeaveModal(secs) {
   const n = S.leaves, p = S.leavePenalty;
-  $('#mLeaveText').textContent = p > 0
-    ? `시험 화면을 벗어난 것이 기록되었어요. 지금까지 ${n}회, 감점 −${n * p}점이에요.`
-    : `시험 화면을 벗어난 것이 기록되었어요. (${n}회)`;
+  $('#mLeaveText').textContent = `이탈 시간 ${fmtSec(secs)} · 지금까지 ${n}회` + (p > 0 ? `, 감점 −${n * p}점` : '') + ' (누적 이탈 시간 ' + fmtSec(S.leaveSec || 0) + ')';
   $('#mLeave').classList.remove('hidden');
 }
-async function flushLeaves(reason) {
-  if (flushing) return; flushing = true;
-  while (leaveQ > 0 && S) {
-    const r = await sapi('leave', { reason: reason || '' }, 20000);
-    if (r.ok) { leaveQ--; try { const q = Math.max(0, (Number(localStorage.getItem(lqKey())) || 0) - 1); localStorage.setItem(lqKey(), String(q)); } catch (e) { } if (typeof r.leaves === 'number') { S.leaves = Math.max(S.leaves || 0, r.leaves); updLeaveBadge(); } }
-    else if (r.network) { await new Promise(res => setTimeout(res, 4000)); }
-    else { leaveQ = 0; break; }
-  }
-  flushing = false;
-}
-document.addEventListener('visibilitychange', () => { document.hidden ? onAway('탭 전환') : onBack(); });
-window.addEventListener('blur', () => { setTimeout(() => { if (!document.hasFocus()) onAway('다른 창'); }, 400); });
-window.addEventListener('focus', onBack);
+document.addEventListener('visibilitychange', checkAway);
+['blur', 'focus', 'pageshow'].forEach(ev => window.addEventListener(ev, checkAway));
+setInterval(checkAway, 700);
 $('#mLeaveOk').onclick = () => $('#mLeave').classList.add('hidden');
 
 /* ───── 제출 ───── */
@@ -234,12 +233,11 @@ function showResult() {
     sum.append(el('div', { class: 'row', style: 'align-items:flex-end;gap:16px' },
       el('div', { class: 'score-big' }, `${r1(R.total)} / ${R.max}`), el('span', { class: 'chip ' + cls }, label)));
     if (R.leaves > 0) sum.append(el('div', { class: 'msg err', style: 'margin-top:10px' },
-      `⚠ 시험 중 화면 이탈 ${R.leaves}회` + (R.penalty ? ` → 감점 −${r1(R.penalty)}점 (원점수 ${r1(R.raw)}점)` : '') + '. 선생님이 확인 후 조정할 수 있어요.'));
+      `⚠ 시험 중 화면 이탈 ${R.leaves}회 (총 ${fmtSec(R.leaveSec || 0)})` + (R.penalty ? ` → 감점 −${r1(R.penalty)}점 (원점수 ${r1(R.raw)}점)` : '') + '. 선생님이 확인 후 조정할 수 있어요.'));
     S.roles.forEach(role => {
       const its = R.items.filter(i => i.role === role), got = its.reduce((a, i) => a + (i.score || 0), 0), mx = its.reduce((a, i) => a + i.max, 0);
       sum.append(el('div', { style: 'margin-top:12px' }, el('b', {}, role), ` — ${r1(got)} / ${mx}`, el('div', { class: 'bar' }, el('i', { style: `width:${mx ? got / mx * 100 : 0}%` }))));
     });
-    if (/키워드/.test(R.gradeStatus)) notice.append(el('div', { class: 'msg info' }, 'AI 채점을 쓸 수 없어 일부 문항은 키워드 방식으로 자동 채점되었어요. 정확한 평가는 선생님이 확인해 줘요.'));
   }
 
   const list = $('#resList'); list.replaceChildren();
@@ -272,7 +270,7 @@ function makePdf() {
   const R = S.result, doc = $('#pdfDoc'); doc.replaceChildren();
   doc.append(el('h1', {}, CONFIG.TITLE), el('div', { class: 'meta' },
     `${S.cls}반 ${S.team}조 · 학번 ${S.sid} · ${S.name} · 제출 ${R.submittedAt || ''}`, el('br'), '역할: ' + S.roles.join(', '),
-    S.showResult && R.total != null && R.gradeStatus !== '대기' ? el('div', {}, `총점 ${r1(R.total)} / ${R.max}` + (R.leaves > 0 ? ` (화면 이탈 ${R.leaves}회, 감점 −${r1(R.penalty || 0)})` : '')) : null));
+    S.showResult && R.total != null && R.gradeStatus !== '대기' ? el('div', {}, `총점 ${r1(R.total)} / ${R.max}` + (R.leaves > 0 ? ` (화면 이탈 ${R.leaves}회·${fmtSec(R.leaveSec || 0)}, 감점 −${r1(R.penalty || 0)})` : '')) : null));
   let last = null;
   R.items.forEach(it => {
     if (it.role !== last) { last = it.role; doc.append(el('div', { class: 'pdf-role' }, '■ ' + it.role)); }
