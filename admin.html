@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>교사 관리 페이지</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<section id="loginView" class="wrap">
+  <div class="card center" style="margin-top:8vh;max-width:420px;margin-left:auto;margin-right:auto">
+    <h1>🔒 교사 관리 페이지</h1>
+    <form id="loginForm" style="text-align:left;margin-top:14px">
+      <label for="pw">교사 비밀번호</label>
+      <input id="pw" type="password" autocomplete="current-password" required>
+      <div id="loginMsg"></div>
+      <button class="btn block" style="margin-top:14px">로그인</button>
+    </form>
+  </div>
+</section>
+
+<section id="mainView" class="wrap wide hidden">
+  <div class="row" style="justify-content:space-between">
+    <h1>교사 관리 페이지</h1>
+    <button class="btn gray small" id="logout">로그아웃</button>
+  </div>
+  <div class="tabs">
+    <button data-tab="status" class="on">학생 현황</button>
+    <button data-tab="settings">설정 · API 키</button>
+    <button data-tab="export">내보내기</button>
+  </div>
+
+  <!-- 현황 -->
+  <div id="tab-status">
+    <div class="grid" id="stats" style="margin-bottom:12px"></div>
+    <div class="filters">
+      <select id="fClass"><option value="">전체 반</option></select>
+      <select id="fStatus"><option value="">전체 상태</option><option>미접속</option><option>작성 중</option><option>제출</option><option>시간종료</option><option>시간종료(미제출)</option></select>
+      <select id="fGrade"><option value="">전체 채점</option><option value="대기">채점 대기</option><option value="완료">채점 완료</option></select>
+      <input type="text" id="fSearch" placeholder="이름·학번 검색">
+      <button class="btn small ghost" id="reload">새로고침</button>
+      <button class="btn small" id="gradePending">채점 대기분 채점</button>
+    </div>
+    <div id="statusMsg"></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>반</th><th>조</th><th>학번</th><th>이름</th><th>역할</th><th>시간</th><th>상태</th><th>채점</th><th>점수</th><th></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+  </div>
+
+  <!-- 설정 -->
+  <div id="tab-settings" class="hidden">
+    <div class="card">
+      <h2>작성 시간 · 기본 설정</h2>
+      <div class="grid">
+        <div><label>역할 1개 (분)</label><input type="number" id="s_MINUTES_1" min="1"></div>
+        <div><label>역할 2개 (분)</label><input type="number" id="s_MINUTES_2" min="1"></div>
+        <div><label>역할 3개 이상 (분)</label><input type="number" id="s_MINUTES_3" min="1"></div>
+        <div><label>문항당 최대 글자</label><input type="number" id="s_MAX_CHARS" min="50"></div>
+        <div><label>종료 후 제출 허용(초)</label><input type="number" id="s_GRACE_SEC" min="0"></div>
+        <div><label>학생에게 결과 공개</label><select id="s_SHOW_RESULT"><option value="Y">공개</option><option value="N">비공개</option></select></div>
+      </div>
+      <label style="margin-top:12px">Gemini 모델 이름</label>
+      <input type="text" id="s_GEMINI_MODEL">
+      <p class="sub" style="margin-top:6px">이미 시작한 학생의 제한 시간은 바뀌지 않아요. (개별 연장은 현황 표에서)</p>
+      <button class="btn" id="saveSettings">설정 저장</button><span id="settingsMsg" style="margin-left:10px"></span>
+    </div>
+    <div class="card">
+      <h2>Gemini 무료 API 키 (여러 개)</h2>
+      <p class="sub">한 줄에 키 하나씩 붙여 넣으세요. 한도가 다 되면 다음 키로 <b>자동 전환</b>돼요. 키는 서버(스크립트 속성)에만 저장되고 이 페이지에는 끝 5자리만 보여요.</p>
+      <textarea id="keysBox" placeholder="AIza....&#10;AIza...." style="min-height:110px"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="saveKeys">키 저장</button>
+        <button class="btn ghost" id="testKeys">연결 테스트</button>
+      </div>
+      <div id="keyMsg"></div>
+      <div id="keyList" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- 내보내기 -->
+  <div id="tab-export" class="hidden">
+    <div class="card">
+      <h2>CSV로 내보내기</h2>
+      <p class="sub">모든 학생의 답안·점수·피드백을 엑셀에서 열 수 있는 CSV로 내려받아요. (구글 시트의 [답안] 시트에도 같은 내용이 쌓여요)</p>
+      <button class="btn" id="exportBtn">전체 답안 CSV 내려받기</button>
+      <div id="exportMsg"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 상세 모달 -->
+<div class="overlay hidden" id="mDetail"><div class="modal big" id="detailBody"></div></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

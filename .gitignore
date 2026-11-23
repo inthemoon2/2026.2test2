@@ -1,0 +1,6 @@
+# 학생 개인정보(명단)와 채점 기준이 들어 있는 서버 코드는 GitHub에 올리지 않습니다.
+명단_양식.csv
+*.csv
+apps-script/
+README.md
+.claude/

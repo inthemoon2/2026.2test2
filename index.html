@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>내 역할 이해도 점검</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- 1. 로그인 -->
+<section id="screen-login" class="wrap">
+  <div class="card center" style="margin-top:8vh">
+    <h1>🧭 내 역할 이해도 점검</h1>
+    <p class="sub">2차 수행평가 · 기계학습으로 사회문제 해결하기</p>
+    <form id="loginForm" style="max-width:320px;margin:0 auto;text-align:left">
+      <label for="sid">학번</label>
+      <input id="sid" type="text" inputmode="numeric" autocomplete="off" placeholder="예) 10101" maxlength="12" required>
+      <label for="lpw" style="margin-top:12px">비밀번호</label>
+      <input id="lpw" type="password" autocomplete="current-password" placeholder="처음이면 비워 두고 [확인]을 눌러요">
+      <div id="loginMsg"></div>
+      <button class="btn block" id="loginBtn" style="margin-top:14px">확인</button>
+    </form>
+    <p class="sub" style="margin-top:18px;font-size:.88rem">이름은 입력하지 않아요. 학번으로 로그인하면 내 역할의 문제만 나와요.<br>처음 접속하면 비밀번호를 직접 만들어요.</p>
+  </div>
+</section>
+
+<!-- 1-2. 비밀번호 만들기 -->
+<section id="screen-setup" class="wrap hidden">
+  <div class="card">
+    <h1>🔑 비밀번호 만들기</h1>
+    <p class="sub" id="setupWho"></p>
+    <div class="msg info" style="font-size:1.02rem">
+      <b>비밀번호 규칙</b><br>
+      <code style="font-size:1.1rem">hyein</code> + <b>내가 기억할 수 있는 숫자 4자리</b> + <code style="font-size:1.1rem">!</code><br>
+      <span style="font-size:.9rem">예) hyein + ○○○○ + ! 처럼 만들어요. (○ 자리에 나만의 숫자 4개)</span>
+    </div>
+    <form id="setupForm">
+      <label for="npw">새 비밀번호</label>
+      <input id="npw" type="password" autocomplete="new-password" required>
+      <label for="npw2" style="margin-top:12px">한 번 더 입력</label>
+      <input id="npw2" type="password" autocomplete="new-password" required>
+      <label class="row" style="font-weight:400;margin-top:10px"><input type="checkbox" id="showPw"> 비밀번호 보이게 하기</label>
+      <div id="setupMsg"></div>
+      <div class="row" style="margin-top:14px"><button class="btn" id="setupBtn">비밀번호 저장하고 시작</button><button type="button" class="btn gray" id="setupBack">내 학번이 아니에요</button></div>
+    </form>
+    <p class="sub" style="margin-top:12px;font-size:.88rem">비밀번호는 한 번 만들면 선생님만 초기화할 수 있어요. 꼭 기억해 두세요.</p>
+  </div>
+</section>
+
+<!-- 2. 안내 -->
+<section id="screen-intro" class="wrap hidden">
+  <div class="card">
+    <h1 id="introTitle"></h1>
+    <p class="sub" id="introSub"></p>
+    <div id="introRoles" class="row" style="margin-bottom:14px"></div>
+    <div class="msg info" id="introTime" style="font-size:1.05rem;font-weight:700"></div>
+    <h3 style="margin-top:18px">시작하기 전에 읽어 주세요</h3>
+    <ul class="rules">
+      <li>면접에서 <b>내 프로젝트와 내 역할을 설명한다</b>고 생각하고 쓰면 돼요. 어려운 문제가 아니에요.</li>
+      <li><b>[시작하기]</b>를 누르는 순간부터 시간이 흘러요. 새로고침하거나 다시 접속해도 <b>남은 시간이 이어져요.</b></li>
+      <li>내용은 <b>20초마다 자동 저장</b>돼요. 한 문항당 <b id="introMax">500</b>자까지 쓸 수 있고, 최소 글자 수는 없어요.</li>
+      <li>시간이 끝나면 <b>자동으로 제출</b>돼요. 끝나기 전에 다 썼다면 직접 제출해도 돼요.</li>
+      <li>제출하면 <b>자동 채점</b> 결과가 나오고, 내 답안을 <b>PDF로 저장</b>할 수 있어요.</li>
+    </ul>
+    <div class="row" style="margin-top:18px">
+      <button class="btn" id="startBtn">시작하기</button>
+      <button class="btn gray" id="introBack">다른 학번으로</button>
+    </div>
+    <div id="introMsg"></div>
+  </div>
+</section>
+
+<!-- 3. 작성 -->
+<section id="screen-write" class="hidden">
+  <div class="topbar"><div class="in">
+    <div><b id="wTitle"></b><div class="saved" id="savedAt">자동 저장 대기 중</div></div>
+    <div class="timer" id="timer">--:--</div>
+  </div></div>
+  <div class="wrap">
+    <div class="msg info" id="warnMsg" style="display:none"></div>
+    <div id="qList"></div>
+    <div class="card center">
+      <p class="sub">다 썼다면 제출하세요. 제출하면 수정할 수 없어요.</p>
+      <button class="btn" id="submitBtn">제출하고 채점받기</button>
+      <div id="writeMsg"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. 결과 -->
+<section id="screen-result" class="wrap hidden">
+  <div class="card">
+    <h1>✅ 제출 완료</h1>
+    <p class="sub" id="resMeta"></p>
+    <div id="resSummary"></div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="pdfBtn">📄 PDF로 저장</button>
+      <button class="btn ghost" id="refreshBtn">결과 새로고침</button>
+      <button class="btn gray" id="logoutBtn">처음 화면으로</button>
+    </div>
+    <div id="resNotice"></div>
+  </div>
+  <div id="resList"></div>
+</section>
+
+<!-- 모달: 제출 확인 -->
+<div class="overlay hidden" id="mSubmit"><div class="modal">
+  <h2>제출할까요?</h2>
+  <p>제출하면 <b>더 이상 수정할 수 없어요.</b></p>
+  <div id="mSubmitWarn" class="msg err hidden"></div>
+  <div class="row" style="justify-content:flex-end"><button class="btn gray" id="mSubmitNo">더 쓸게요</button><button class="btn" id="mSubmitYes">제출할게요</button></div>
+</div></div>
+
+<!-- 모달: 채점 중 -->
+<div class="overlay hidden" id="mBusy"><div class="modal center">
+  <div class="spinner"></div><h3 id="busyTitle">제출하고 있어요</h3><p class="sub" id="busySub">창을 닫지 말고 잠시만 기다려 주세요. (최대 1분)</p>
+  <div id="busyErr"></div>
+</div></div>
+
+<!-- 모달: PDF 저장 -->
+<div class="overlay hidden" id="mPdf"><div class="modal center">
+  <h2>📄 내 답안을 PDF로 저장할까요?</h2>
+  <p class="sub">내 컴퓨터에 다운로드돼요. 지금 저장하지 않아도, 이 화면에서 다시 저장할 수 있어요.</p>
+  <div class="row" style="justify-content:center"><button class="btn" id="mPdfYes">네, 저장할게요</button><button class="btn gray" id="mPdfNo">나중에</button></div>
+</div></div>
+
+<div class="pdf-holder"><div id="pdfDoc"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/student.js"></script>
+</body>
+</html>
