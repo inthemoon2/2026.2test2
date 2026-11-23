@@ -12,11 +12,12 @@ $('#loginForm').addEventListener('submit', async e => {
   sessionStorage.setItem('apw', PW); enter();
 });
 $('#logout').onclick = () => { sessionStorage.removeItem('apw'); location.reload(); };
-function enter() { $('#loginView').classList.add('hidden'); $('#mainView').classList.remove('hidden'); loadStatus(); loadSettings(); pollTimer = setInterval(() => { if (!$('#tab-status').classList.contains('hidden')) loadStatus(true); }, 30000); }
+function enter() { $('#loginView').classList.add('hidden'); $('#mainView').classList.remove('hidden'); loadStatus(); loadSettings(); setInterval(() => { if (!$('#tab-monitor').classList.contains('hidden')) loadMonitor(); }, 6000); setInterval(tickMonitor, 1000); pollTimer = setInterval(() => { if (!$('#tab-status').classList.contains('hidden')) loadStatus(true); }, 30000); }
 
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  ['status', 'settings', 'export'].forEach(t => $('#tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
+  ['status', 'monitor', 'settings', 'export'].forEach(t => $('#tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
+  if (b.dataset.tab === 'monitor') loadMonitor();
 });
 
 /* ───── 현황 ───── */
@@ -87,7 +88,7 @@ async function setLeaves(sid, to, after) {
   const r = await adm('adminSetLeaves', { sid, count: to });
   if (!r.ok) return alert(r.error);
   const s = LIST.find(x => x.sid === sid);
-  if (s) { s.leaves = r.leaves; s.leaveSec = r.leaveSec; if (s.total !== '' && r.total !== '' && r.total != null) s.total = r.total; render(); }
+  if (s) { s.leaves = r.leaves; s.leaveSec = r.leaveSec; if (s.total !== '' && r.total !== '' && r.total != null) s.total = r.total; render(); renderMonitor(); }
   if (after) after(r);
 }
 function leaveCtl(sid, n, sec, after, big) {
@@ -177,3 +178,60 @@ $('#exportBtn').onclick = async () => {
 };
 
 (function init() { const p = sessionStorage.getItem('apw'); if (p) { PW = p; adm('adminLogin').then(r => { if (r.ok) enter(); else sessionStorage.removeItem('apw'); }); } })();
+
+/* ───── 실시간 감시 ───── */
+let monOffset = 0, monLoading = false;
+async function loadMonitor() {
+  if (monLoading) return; monLoading = true;
+  const r = await adm('adminOverview');
+  monLoading = false;
+  if (!r.ok) return;
+  LIST = r.list; monOffset = r.serverNow - Date.now();
+  const sel = $('#mClass'), cur = sel.value, cls = [...new Set(LIST.map(s => s.cls))].sort((a, b) => a - b);
+  sel.replaceChildren(el('option', { value: '' }, '전체 반'), ...cls.map(c => el('option', { value: c }, c + '반'))); sel.value = cur;
+  $('#mUpdated').textContent = '마지막 갱신 ' + new Date().toLocaleTimeString('ko-KR');
+  render(); renderMonitor();
+}
+const LOST_MS = 90000;
+function monState(s, now) {
+  if (s.status === '미접속') return 'idle';
+  if (s.status === '작성 중') return s.awayMs ? 'away' : (s.lastMs && now - s.lastMs > LOST_MS ? 'lost' : 'ok');
+  return 'done';
+}
+const mmss = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+const shortRole = r => r.replace('AI 윤리·소통 담당', 'AI윤리').replace('프로젝트 매니저', 'PM').replace('도메인 분석가', '도메인').replace('데이터 엔지니어', '데이터').replace('모델 개발자', '모델');
+function renderMonitor() {
+  if (!$('#tab-monitor') || $('#tab-monitor').classList.contains('hidden')) return;
+  const now = Date.now() + monOffset, fc = $('#mClass').value, only = $('#mOnly').checked;
+  const rank = { away: 0, lost: 1, ok: 2, done: 3, idle: 4 };
+  const all = LIST.filter(s => !fc || String(s.cls) === fc).map(s => ({ s, st: monState(s, now) }));
+  const cnt = k => all.filter(x => x.st === k).length;
+  $('#mStats').replaceChildren(...[['작성 중', cnt('ok') + cnt('away') + cnt('lost')], ['🚨 이탈 중', cnt('away')], ['신호 끊김', cnt('lost')],
+    ['이탈 이력 있음', all.filter(x => x.s.leaves > 0).length], ['제출 완료', cnt('done')], ['미접속', cnt('idle')]].map(([k, v]) => el('div', { class: 'stat' }, k, el('b', {}, v))));
+  const rows = all.filter(x => !only || x.st === 'away' || x.st === 'lost' || x.s.leaves > 0)
+    .sort((a, b) => rank[a.st] - rank[b.st] || (b.s.leaves - a.s.leaves) || String(a.s.sid).localeCompare(String(b.s.sid)));
+  $('#mCards').replaceChildren(...rows.map(({ s, st }) => {
+    const label = { away: '🚨 이탈 중', lost: '⚠ 신호 끊김', ok: '작성 중', done: s.status, idle: '미접속' }[st];
+    const card = el('div', { class: 'mcard ' + st },
+      el('div', { class: 'top' }, el('span', { class: 'nm', onclick: () => openDetail(s.sid) }, `${s.cls}반 ${s.team}조 ${s.name}`), el('span', { class: 'chip ' + (st === 'away' ? 'danger' : st === 'lost' ? 'warn' : st === 'ok' ? 'ok' : '') }, label)),
+      el('div', { class: 'meta' }, s.sid + ' · ' + s.roles.map(shortRole).join('·')));
+    if (st === 'idle') return card;
+    if (st === 'done') card.append(el('div', { class: 'meta' }, `제출 ${String(s.submitted || '').slice(11)} · 점수 ${s.total === '' ? '채점 대기' : r1(s.total) + '/' + s.max}`));
+    else {
+      card.append(el('div', { class: 'top' }, el('span', { class: 'mt', 'data-end': s.endsAt }, mmss(s.endsAt - now)), el('span', { class: 'meta' }, `${s.chars}자 작성`)));
+      card.append(el('div', { class: 'meta', 'data-last': s.lastMs || 0, 'data-away': s.awayMs || 0 }, ''));
+    }
+    card.append(leaveCtl(s.sid, s.leaves || 0, s.leaveSec || 0));
+    return card;
+  }));
+  tickMonitor();
+}
+function tickMonitor() {
+  const now = Date.now() + monOffset;
+  document.querySelectorAll('#mCards .mt').forEach(n => { n.textContent = mmss(Number(n.dataset.end) - now); });
+  document.querySelectorAll('#mCards [data-last]').forEach(n => {
+    const a = Number(n.dataset.away), l = Number(n.dataset.last);
+    n.textContent = a ? '지금 화면을 벗어난 지 ' + fmtSec((now - a) / 1000) : (l ? '마지막 신호 ' + fmtSec((now - l) / 1000) + ' 전' : '');
+  });
+}
+$('#mClass').onchange = renderMonitor; $('#mOnly').onchange = renderMonitor;

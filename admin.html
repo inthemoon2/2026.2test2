@@ -28,6 +28,7 @@
   </div>
   <div class="tabs">
     <button data-tab="status" class="on">학생 현황</button>
+    <button data-tab="monitor">실시간 감시</button>
     <button data-tab="settings">설정 · API 키</button>
     <button data-tab="export">내보내기</button>
   </div>
@@ -48,6 +49,18 @@
       <thead><tr><th>반</th><th>조</th><th>학번</th><th>이름</th><th>역할</th><th>시간</th><th>상태</th><th>채점</th><th>점수</th><th>이탈</th><th></th></tr></thead>
       <tbody id="rows"></tbody>
     </table></div>
+  </div>
+
+  <!-- 실시간 감시 -->
+  <div id="tab-monitor" class="hidden">
+    <div class="grid" id="mStats" style="margin-bottom:12px"></div>
+    <div class="filters">
+      <select id="mClass"><option value="">전체 반</option></select>
+      <label class="inline"><input type="checkbox" id="mOnly"> 주의 학생만 (이탈 중·이탈 이력·신호 끊김)</label>
+      <span class="sub" id="mUpdated"></span>
+    </div>
+    <div class="msg info" style="margin-bottom:12px">6초마다 자동 갱신돼요. 카드의 −/+ 로 이탈 횟수를 바로 고칠 수 있고, 이름을 누르면 답안과 점수를 볼 수 있어요.</div>
+    <div class="mgrid" id="mCards"></div>
   </div>
 
   <!-- 설정 -->

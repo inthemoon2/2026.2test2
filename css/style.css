@@ -104,3 +104,17 @@ th{background:var(--bg);position:sticky;top:0;white-space:nowrap}
 .stepper .step:hover:not(:disabled){background:var(--hover,rgba(120,120,120,.15))}
 .stepper .step:disabled{opacity:.35;cursor:default}
 .stepper.big .step{width:32px;height:32px;font-size:1.2rem}
+
+/* 실시간 감시 */
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.mcard{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:10px 12px;font-size:.92rem}
+.mcard .nm{font-weight:800;cursor:pointer;text-decoration:underline dotted}
+.mcard .top{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px}
+.mcard .mt{font-variant-numeric:tabular-nums;font-weight:800}
+.mcard .meta{color:var(--muted);font-size:.82rem;margin:2px 0}
+.mcard.away{border-color:var(--danger);background:var(--dangerbg);animation:mblink 1.2s infinite}
+.mcard.lost{border-color:var(--warn);background:var(--warnbg)}
+.mcard.idle{opacity:.55}
+.mcard.done{border-color:var(--ok)}
+@keyframes mblink{50%{box-shadow:0 0 0 3px var(--danger)}}
+label.inline{display:inline-flex;align-items:center;gap:6px;font-weight:600}
