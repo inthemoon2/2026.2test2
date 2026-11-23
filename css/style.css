@@ -36,6 +36,7 @@ textarea{min-height:150px;resize:vertical;line-height:1.7}
 .chip.ok{background:var(--okbg);color:var(--ok)} .chip.warn{background:var(--warnbg);color:var(--warn)} .chip.danger{background:var(--dangerbg);color:var(--danger)}
 .msg{padding:10px 14px;border-radius:10px;margin:12px 0;font-size:.95rem}
 .msg.err{background:var(--dangerbg);color:var(--danger)} .msg.info{background:var(--soft);color:var(--primary)} .msg.okm{background:var(--okbg);color:var(--ok)}
+ul.rules li.rule-warn{color:var(--danger)}
 ul.rules{padding-left:1.2em;margin:.4em 0} ul.rules li{margin:.35em 0}
 
 /* 작성 화면 */

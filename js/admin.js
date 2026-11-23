@@ -44,6 +44,7 @@ function render() {
     el('td', {}, s.roles.map(r => r.replace('AI 윤리·소통 담당', 'AI윤리').replace('프로젝트 매니저', 'PM').replace('도메인 분석가', '도메인').replace('데이터 엔지니어', '데이터').replace('모델 개발자', '모델')).join(' · ')),
     el('td', {}, s.minutes + '분'), el('td', {}, el('span', { class: 'chip ' + stateClass(s.status) }, s.status)),
     el('td', {}, s.grade || '-'), el('td', {}, s.total === '' ? '-' : `${r1(s.total)}/${s.max}`),
+    el('td', {}, s.leaves ? el('span', { class: 'chip danger' }, `${s.leaves}회`) : '-'),
     el('td', { style: 'white-space:nowrap' }, el('button', { class: 'btn small ghost', onclick: () => openDetail(s.sid) }, '상세')))));
 }
 ['fClass', 'fStatus', 'fGrade'].forEach(i => $('#' + i).onchange = render);
@@ -64,6 +65,7 @@ async function openDetail(sid) {
   body.replaceChildren(
     el('h2', {}, `${r.cls}반 ${r.team}조 · ${r.name} (${r.sid})`),
     el('p', { class: 'sub' }, r.roles.join(', ') + (ses ? ` · 시작 ${ses['시작시각']} · 제출 ${ses['제출시각'] || '-'} · ${ses['상태']}` : ' · 아직 시작 전')),
+    ses ? leaveBox(r, ses, sid) : null,
     ...r.items.map(it => el('div', { class: 'card' },
       el('div', { class: 'row', style: 'justify-content:space-between' }, el('b', {}, `[${it.role}] ${it.title}`), el('span', { class: 'chip' }, it.score == null ? '미채점' : `${r1(it.score)} / ${it.max}`)),
       el('div', { class: 'sub' }, it.q),
@@ -77,6 +79,25 @@ async function openDetail(sid) {
       el('button', { class: 'btn small danger', onclick: async () => { if (!confirm(`${r.name} 학생의 시간과 답안을 모두 지울까요? 되돌릴 수 없어요.`)) return; const x = await adm('adminReset', { sid }); alert(x.ok ? '초기화했어요.' : x.error); closeDetail(); loadStatus(true); } }, '초기화(처음부터)'),
       el('button', { class: 'btn small gray', onclick: closeDetail }, '닫기')));
 }
+// 화면 이탈 기록 + 교사가 확인 후 횟수를 고치거나 0으로 초기화
+function leaveBox(r, ses, sid) {
+  const n = Number(ses['이탈횟수']) || 0, log = String(ses['이탈기록'] || '');
+  const setTo = async to => {
+    const x = await adm('adminSetLeaves', { sid, count: to });
+    if (!x.ok) return alert(x.error);
+    openDetail(sid); loadStatus(true);
+  };
+  return el('div', { class: 'card', style: n ? 'border-color:var(--danger)' : '' },
+    el('div', { class: 'row', style: 'justify-content:space-between' },
+      el('b', {}, '화면 이탈'),
+      el('span', { class: 'chip ' + (n ? 'danger' : 'ok') }, n ? `${n}회 · 감점 −${n * r.penaltyUnit}점` : '없음')),
+    ses['원점수'] !== '' && ses['원점수'] != null ? el('div', { class: 'sub' }, `원점수 ${r1(ses['원점수'])} → 최종 ${r1(ses['총점'])} / ${ses['만점']}`) : null,
+    log ? el('pre', { class: 'myans', style: 'white-space:pre-wrap;margin:6px 0' }, log) : el('div', { class: 'sub' }, '이탈 기록이 없어요.'),
+    n ? el('div', { class: 'row' },
+      el('button', { class: 'btn small', onclick: () => { if (confirm(`이탈 ${n}회를 확인했고 0회로 초기화할까요? 감점이 없어지고 총점이 다시 계산돼요.`)) setTo(0); } }, '이탈 초기화 (0회)'),
+      el('button', { class: 'btn small ghost', onclick: () => { const v = prompt('이탈 횟수를 몇 회로 고칠까요?', String(Math.max(0, n - 1))); if (v !== null && v.trim() !== '') setTo(Number(v)); } }, '횟수 수정'))
+      : null);
+}
 function closeDetail() { $('#mDetail').classList.add('hidden'); }
 $('#mDetail').addEventListener('click', e => { if (e.target.id === 'mDetail') closeDetail(); });
 
@@ -84,14 +105,14 @@ $('#mDetail').addEventListener('click', e => { if (e.target.id === 'mDetail') cl
 async function loadSettings() {
   const r = await adm('adminSettings');
   if (!r.ok) return;
-  ['MINUTES_1', 'MINUTES_2', 'MINUTES_3', 'MAX_CHARS', 'GRACE_SEC', 'SHOW_RESULT', 'GEMINI_MODEL'].forEach(k => { $('#s_' + k).value = r.settings[k]; });
+  ['MINUTES_1', 'MINUTES_2', 'MINUTES_3', 'MAX_CHARS', 'GRACE_SEC', 'LEAVE_PENALTY', 'SHOW_RESULT', 'GEMINI_MODEL'].forEach(k => { $('#s_' + k).value = r.settings[k]; });
   renderKeys(r.keys);
 }
 function renderKeys(keys) {
   $('#keyList').replaceChildren(keys.length ? el('div', {}, el('b', {}, `등록된 키 ${keys.length}개`), ...keys.map(k => el('div', {}, `${k.id} — `, el('span', { class: 'chip ' + (k.status === '사용 가능' ? 'ok' : 'warn') }, k.status)))) : el('p', { class: 'sub' }, '등록된 키가 없어요.'));
 }
 $('#saveSettings').onclick = async () => {
-  const s = {}; ['MINUTES_1', 'MINUTES_2', 'MINUTES_3', 'MAX_CHARS', 'GRACE_SEC', 'SHOW_RESULT', 'GEMINI_MODEL'].forEach(k => s[k] = $('#s_' + k).value);
+  const s = {}; ['MINUTES_1', 'MINUTES_2', 'MINUTES_3', 'MAX_CHARS', 'GRACE_SEC', 'LEAVE_PENALTY', 'SHOW_RESULT', 'GEMINI_MODEL'].forEach(k => s[k] = $('#s_' + k).value);
   const r = await adm('adminSaveSettings', { settings: s });
   note('#settingsMsg', r.ok ? '저장했어요.' : r.error, r.ok ? 'okm' : 'err');
 };

@@ -15,7 +15,7 @@
     <p class="sub">2차 수행평가 · 기계학습으로 사회문제 해결하기</p>
     <form id="loginForm" style="max-width:320px;margin:0 auto;text-align:left">
       <label for="sid">학번</label>
-      <input id="sid" type="text" inputmode="numeric" autocomplete="off" placeholder="예) 10101" maxlength="12" required>
+      <input id="sid" type="text" inputmode="numeric" autocomplete="off" placeholder="예) 1101" maxlength="4" pattern="[0-9]{4}" title="학번 4자리 숫자" required>
       <label for="lpw" style="margin-top:12px">비밀번호</label>
       <input id="lpw" type="password" autocomplete="current-password" placeholder="처음이면 비워 두고 [확인]을 눌러요">
       <div id="loginMsg"></div>
@@ -60,6 +60,7 @@
       <li>면접에서 <b>내 프로젝트와 내 역할을 설명한다</b>고 생각하고 쓰면 돼요. 어려운 문제가 아니에요.</li>
       <li><b>[시작하기]</b>를 누르는 순간부터 시간이 흘러요. 새로고침하거나 다시 접속해도 <b>남은 시간이 이어져요.</b></li>
       <li>내용은 <b>20초마다 자동 저장</b>돼요. 한 문항당 <b id="introMax">500</b>자까지 쓸 수 있고, 최소 글자 수는 없어요.</li>
+      <li class="rule-warn">⚠ 작성 중에 <b>다른 탭·창·프로그램으로 넘어가면(화면 이탈) 1회당 <span id="introPenalty">5</span>점이 감점</b>돼요. 검색하거나 다른 화면을 보지 마세요.</li>
       <li>시간이 끝나면 <b>자동으로 제출</b>돼요. 끝나기 전에 다 썼다면 직접 제출해도 돼요.</li>
       <li>제출하면 <b>자동 채점</b> 결과가 나오고, 내 답안을 <b>PDF로 저장</b>할 수 있어요.</li>
     </ul>
@@ -75,6 +76,7 @@
 <section id="screen-write" class="hidden">
   <div class="topbar"><div class="in">
     <div><b id="wTitle"></b><div class="saved" id="savedAt">자동 저장 대기 중</div></div>
+    <span class="chip danger hidden" id="leaveBadge"></span>
     <div class="timer" id="timer">--:--</div>
   </div></div>
   <div class="wrap">
@@ -119,6 +121,13 @@
 </div></div>
 
 <!-- 모달: PDF 저장 -->
+<div class="overlay hidden" id="mLeave"><div class="modal center">
+  <h2>⚠ 화면 이탈이 감지됐어요</h2>
+  <p class="sub" id="mLeaveText"></p>
+  <p class="sub">다른 프로그램이 저절로 실행된 경우라면 시험이 끝난 뒤 선생님께 말씀드리세요. 확인 후 조정해 줘요.</p>
+  <button class="btn" id="mLeaveOk">확인하고 계속 쓰기</button>
+</div></div>
+
 <div class="overlay hidden" id="mPdf"><div class="modal center">
   <h2>📄 내 답안을 PDF로 저장할까요?</h2>
   <p class="sub">내 컴퓨터에 다운로드돼요. 지금 저장하지 않아도, 이 화면에서 다시 저장할 수 있어요.</p>

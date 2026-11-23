@@ -45,7 +45,7 @@
     </div>
     <div id="statusMsg"></div>
     <div class="tablewrap"><table>
-      <thead><tr><th>반</th><th>조</th><th>학번</th><th>이름</th><th>역할</th><th>시간</th><th>상태</th><th>채점</th><th>점수</th><th></th></tr></thead>
+      <thead><tr><th>반</th><th>조</th><th>학번</th><th>이름</th><th>역할</th><th>시간</th><th>상태</th><th>채점</th><th>점수</th><th>이탈</th><th></th></tr></thead>
       <tbody id="rows"></tbody>
     </table></div>
   </div>
@@ -60,6 +60,7 @@
         <div><label>역할 3개 이상 (분)</label><input type="number" id="s_MINUTES_3" min="1"></div>
         <div><label>문항당 최대 글자</label><input type="number" id="s_MAX_CHARS" min="50"></div>
         <div><label>종료 후 제출 허용(초)</label><input type="number" id="s_GRACE_SEC" min="0"></div>
+        <div><label>화면 이탈 1회 감점(점)</label><input type="number" id="s_LEAVE_PENALTY" min="0"></div>
         <div><label>학생에게 결과 공개</label><select id="s_SHOW_RESULT"><option value="Y">공개</option><option value="N">비공개</option></select></div>
       </div>
       <label style="margin-top:12px">Gemini 모델 이름</label>
