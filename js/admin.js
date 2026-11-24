@@ -96,11 +96,24 @@ async function openDetail(sid) {
 }
 // ── 화면 이탈: 표와 상세 창 어디서든 −/+ 로 바로 고침 (서버에 즉시 저장, 점수 자동 재계산)
 const fmtSec = s => { s = Math.round(Number(s) || 0); return s >= 60 ? `${Math.floor(s / 60)}분 ${s % 60}초` : `${s}초`; };
+let lastEditAt = 0;
+function toast(text, bad) {
+  const t = el('div', { class: 'msg ' + (bad ? 'err' : 'okm'), style: 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99;box-shadow:0 4px 18px rgba(0,0,0,.25);max-width:90vw' }, text);
+  document.body.append(t); setTimeout(() => t.remove(), bad ? 7000 : 2200);
+}
+// 화면에 먼저 반영하고(바로 줄어듦) 서버에 저장. 실패하면 되돌리고 이유를 알려 줌
 async function setLeaves(sid, to, after) {
   if (to < 0) return;
-  const r = await adm('adminSetLeaves', { sid, count: to });
-  if (!r.ok) return alert(r.error);
   const s = LIST.find(x => x.sid === sid);
+  const prev = s ? { leaves: s.leaves, leaveSec: s.leaveSec, total: s.total } : null;
+  lastEditAt = Date.now();
+  if (s) { s.leaves = to; if (to === 0) s.leaveSec = 0; render(); renderMonitor(); }
+  const r = await adm('adminSetLeaves', { sid, count: to });
+  if (!r.ok) {
+    if (s && prev) { Object.assign(s, prev); render(); renderMonitor(); }
+    return toast('이탈 횟수를 저장하지 못했어요: ' + (r.error || '서버 응답 없음'), true);
+  }
+  lastEditAt = Date.now();
   if (s) { s.leaves = r.leaves; s.leaveSec = r.leaveSec; if (s.total !== '' && r.total !== '' && r.total != null) s.total = r.total; render(); renderMonitor(); }
   if (after) after(r);
 }
@@ -109,8 +122,7 @@ function leaveCtl(sid, n, sec, after, big) {
   const go = async d => { if (busy) return; busy = true; await setLeaves(sid, n + d, after); busy = false; };
   return el('span', { class: 'stepper' + (big ? ' big' : ''), title: '실수로 이탈한 경우 − 로 줄이세요' },
     el('button', { class: 'step', disabled: n <= 0, onclick: () => go(-1) }, '−'),
-    el('span', { class: 'chip ' + (n ? 'danger' : 'ok') }, n ? `${n}회 · ${fmtSec(sec)}` : '0회'),
-    el('button', { class: 'step', onclick: () => go(1) }, '+'));
+    el('span', { class: 'chip ' + (n ? 'danger' : 'ok') }, n ? `${n}회 · ${fmtSec(sec)}` : '0회'));
 }
 // ── 문항 점수: 점수 옆 −/+ (0.5점씩, 0~만점 사이) → 부분 점수
 function scoreCtl(sid, it, onTotals) {
@@ -140,7 +152,7 @@ function leaveBox(r, ses, sid, sumEl) {
       el('div', { class: 'row', style: 'justify-content:space-between' },
         el('b', {}, '화면 이탈 (횟수 · 벗어난 시간)'),
         leaveCtl(sid, n, sec, x => { draw(x.leaves, x.leaveSec, logText + '\n↺ 교사가 수정'); setSum(x); }, true)),
-      n ? el('div', { class: 'sub' }, `감점 −${n * r.penaltyUnit}점 (1회당 ${r.penaltyUnit}점). 실수라면 − 로 횟수를 줄이세요. 0회가 되면 이탈 시간도 0으로 초기화돼요.`) : el('div', { class: 'sub' }, '이탈 기록이 없어요.'),
+      n ? el('div', { class: 'sub' }, `감점 −${n * r.penaltyUnit}점 (1회당 ${r.penaltyUnit}점). 실수라면 − 버튼으로 횟수를 줄이세요. 0회가 되면 이탈 시간도 0으로 초기화돼요.`) : el('div', { class: 'sub' }, '이탈 기록이 없어요.'),
       logText ? el('pre', { class: 'myans', style: 'white-space:pre-wrap;margin:6px 0' }, logText) : null);
   };
   const setSum = x => { if (sumEl && x && x.total !== '' && x.total != null) sumEl.textContent = `원점수 ${r1(x.raw)} − 감점 ${r1(x.pen || 0)} = 최종 ${r1(x.total)} / ${x.max || x.sessMax}`; };
@@ -197,9 +209,11 @@ $('#exportBtn').onclick = async () => {
 let monOffset = 0, monLoading = false;
 async function loadMonitor() {
   if (monLoading) return; monLoading = true;
+  const t0 = Date.now();
   const r = await adm('adminOverview');
   monLoading = false;
   if (!r.ok) return;
+  if (lastEditAt >= t0) return; // 불러오는 사이에 교사가 고쳤다면 옛 값으로 덮어쓰지 않음 (다음 갱신에 반영)
   LIST = r.list; monOffset = r.serverNow - Date.now();
   const sel = $('#mClass'), cur = sel.value, cls = [...new Set(LIST.map(s => s.cls))].sort((a, b) => a - b);
   sel.replaceChildren(el('option', { value: '' }, '전체 반'), ...cls.map(c => el('option', { value: c }, c + '반'))); sel.value = cur;
