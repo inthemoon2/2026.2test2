@@ -74,6 +74,8 @@ function showIntro() {
 }
 $('#startBtn').onclick = async () => {
   $('#startBtn').disabled = true;
+  msg('#introMsg', '시작을 준비하고 있어요…', 'info');
+  await new Promise(res => setTimeout(res, Math.random() * 2500)); // 여러 명이 동시에 누르면 서버가 막히지 않도록 살짝 분산
   const r = await sapi('start');
   $('#startBtn').disabled = false;
   if (!r.ok) return msg('#introMsg', r.error);

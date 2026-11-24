@@ -23,7 +23,7 @@
 
 <section id="mainView" class="wrap wide hidden">
   <div class="row" style="justify-content:space-between">
-    <h1>교사 관리 페이지</h1>
+    <h1 id="adminTitle">교사 관리 페이지</h1>
     <button class="btn gray small" id="logout">로그아웃</button>
   </div>
   <div class="tabs">
@@ -58,6 +58,7 @@
       <select id="mClass"><option value="">전체 반</option></select>
       <label class="inline"><input type="checkbox" id="mOnly"> 주의 학생만 (이탈 중·이탈 이력·신호 끊김)</label>
       <span class="sub" id="mUpdated"></span>
+      <button class="btn small ghost" id="popMonitor" onclick="window.open('admin.html?view=monitor','monitorWin','width=1280,height=820,resizable=yes,scrollbars=yes')">↗ 별도 창으로 열기</button>
     </div>
     <div class="msg info" style="margin-bottom:12px">6초마다 자동 갱신돼요. 카드의 −/+ 로 이탈 횟수를 바로 고칠 수 있고, 이름을 누르면 답안과 점수를 볼 수 있어요.</div>
     <div class="mgrid" id="mCards"></div>
@@ -67,6 +68,7 @@
   <div id="tab-settings" class="hidden">
     <div class="card">
       <h2>작성 시간 · 기본 설정</h2>
+      <p class="sub" id="serverVer"></p>
       <div class="grid">
         <div><label>역할 1개 (분)</label><input type="number" id="s_MINUTES_1" min="1"></div>
         <div><label>역할 2개 (분)</label><input type="number" id="s_MINUTES_2" min="1"></div>

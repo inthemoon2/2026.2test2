@@ -12,7 +12,15 @@ $('#loginForm').addEventListener('submit', async e => {
   sessionStorage.setItem('apw', PW); enter();
 });
 $('#logout').onclick = () => { sessionStorage.removeItem('apw'); location.reload(); };
-function enter() { $('#loginView').classList.add('hidden'); $('#mainView').classList.remove('hidden'); loadStatus(); loadSettings(); setInterval(() => { if (!$('#tab-monitor').classList.contains('hidden')) loadMonitor(); }, 6000); setInterval(tickMonitor, 1000); pollTimer = setInterval(() => { if (!$('#tab-status').classList.contains('hidden')) loadStatus(true); }, 30000); }
+const MONITOR_ONLY = new URLSearchParams(location.search).get('view') === 'monitor';
+function enter() {
+  $('#loginView').classList.add('hidden'); $('#mainView').classList.remove('hidden');
+  if (MONITOR_ONLY) { // 별도 감시 창: 감시 화면만 크게 보여 줌
+    document.title = '실시간 감시'; document.querySelector('.tabs').classList.add('hidden');
+    ['status', 'settings', 'export'].forEach(t => $('#tab-' + t).classList.add('hidden')); $('#tab-monitor').classList.remove('hidden');
+    $('#popMonitor').classList.add('hidden'); $('#adminTitle').textContent = '실시간 감시'; loadMonitor();
+  } else { loadStatus(); loadSettings(); }
+  setInterval(() => { if (!$('#tab-monitor').classList.contains('hidden')) loadMonitor(); }, 6000); setInterval(tickMonitor, 1000); pollTimer = setInterval(() => { if (!$('#tab-status').classList.contains('hidden')) loadStatus(true); }, 30000); }
 
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
@@ -149,6 +157,7 @@ async function loadSettings() {
   if (!r.ok) return;
   ['MINUTES_1', 'MINUTES_2', 'MINUTES_3', 'MAX_CHARS', 'GRACE_SEC', 'LEAVE_PENALTY', 'SHOW_RESULT', 'GEMINI_MODEL'].forEach(k => { $('#s_' + k).value = r.settings[k]; });
   renderKeys(r.keys);
+  if (r.version) $('#serverVer').textContent = '서버 버전 ' + r.version;
 }
 function renderKeys(keys) {
   $('#keyList').replaceChildren(keys.length ? el('div', {}, el('b', {}, `등록된 키 ${keys.length}개`), ...keys.map(k => el('div', {}, `${k.id} — `, el('span', { class: 'chip ' + (k.status === '사용 가능' ? 'ok' : 'warn') }, k.status)))) : el('p', { class: 'sub' }, '등록된 키가 없어요.'));
