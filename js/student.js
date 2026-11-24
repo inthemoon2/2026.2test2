@@ -134,7 +134,7 @@ function tick() {
 let savePromise = null;
 async function saveNow() {
   if (!S || S.status !== 'running' || submitting) return;
-  const body = dirty ? { answers } : {}; // 바뀐 게 없으면 '살아있음' 신호만 가볍게 보냄
+  const body = Object.assign(dirty ? { answers } : {}, { vis: isAway() ? 0 : 1, ts: Date.now() }); // 바뀐 게 없으면 '살아있음'+화면 상태 신호만 가볍게 보냄
   dirty = false;
   savePromise = sapi('save', body, 30000);
   const r = await savePromise;

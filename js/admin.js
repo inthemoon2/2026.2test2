@@ -249,7 +249,13 @@ function renderMonitor() {
       card.append(el('div', { class: 'top' }, el('span', { class: 'mt', 'data-end': s.endsAt }, mmss(s.endsAt - now)), el('span', { class: 'meta' }, `${s.chars}자 작성`)));
       card.append(el('div', { class: 'meta', 'data-last': s.lastMs || 0, 'data-away': s.awayMs || 0 }, ''));
     }
-    card.append(leaveCtl(s.sid, s.leaves || 0, s.leaveSec || 0));
+    const ctl = el('div', { class: 'row', style: 'gap:6px;align-items:center' }, leaveCtl(s.sid, s.leaves || 0, s.leaveSec || 0));
+    if (st === 'away') ctl.append(el('button', { class: 'btn small ghost', title: '학생이 실제로는 화면을 보고 있는데 이탈 중으로 남아 있을 때 누르세요', onclick: async () => {
+      const x = await adm('adminClearAway', { sid: s.sid });
+      if (!x.ok) return toast('해제하지 못했어요: ' + x.error, true);
+      s.awayMs = 0; lastEditAt = Date.now(); renderMonitor(); toast('이탈 중 표시를 해제했어요.');
+    } }, '이탈 중 해제'));
+    card.append(ctl);
     return card;
   }));
   tickMonitor();
