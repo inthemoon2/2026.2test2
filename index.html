@@ -62,7 +62,7 @@
       <li>내용은 <b>20초마다 자동 저장</b>돼요. 한 문항당 <b id="introMax">500</b>자까지 쓸 수 있고, 최소 글자 수는 없어요.</li>
       <li class="rule-warn">⚠ 작성 중에 <b>다른 탭·창·프로그램으로 넘어가면(화면 이탈) 1회당 <span id="introPenalty">5</span>점이 감점</b>되고, 벗어난 <b>횟수와 시간</b>이 모두 기록돼요. 검색하거나 다른 화면을 보지 마세요.</li>
       <li>시간이 끝나면 <b>자동으로 제출</b>돼요. 끝나기 전에 다 썼다면 직접 제출해도 돼요.</li>
-      <li>제출하면 <b>자동 채점</b> 결과가 나오고, 내 답안을 <b>PDF로 저장</b>할 수 있어요.</li>
+      <li>제출하면 답안이 <b>안전하게 저장</b>되고, 내 답안을 <b>PDF로 저장</b>할 수 있어요. 채점은 선생님이 따로 진행해요.</li>
     </ul>
     <div class="row" style="margin-top:18px">
       <button class="btn" id="startBtn">시작하기</button>
@@ -84,7 +84,7 @@
     <div id="qList"></div>
     <div class="card center">
       <p class="sub">다 썼다면 제출하세요. 제출하면 수정할 수 없어요.</p>
-      <button class="btn" id="submitBtn">제출하고 채점받기</button>
+      <button class="btn" id="submitBtn">제출하기</button>
       <div id="writeMsg"></div>
     </div>
   </div>
@@ -114,7 +114,7 @@
   <div class="row" style="justify-content:flex-end"><button class="btn gray" id="mSubmitNo">더 쓸게요</button><button class="btn" id="mSubmitYes">제출할게요</button></div>
 </div></div>
 
-<!-- 모달: 채점 중 -->
+<!-- 모달: 제출 중 -->
 <div class="overlay hidden" id="mBusy"><div class="modal center">
   <div class="spinner"></div><h3 id="busyTitle">제출하고 있어요</h3><p class="sub" id="busySub">창을 닫지 말고 잠시만 기다려 주세요. (최대 1분)</p>
   <div id="busyErr"></div>

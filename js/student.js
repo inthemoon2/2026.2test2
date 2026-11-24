@@ -198,7 +198,7 @@ async function doSubmit(auto) {
   if (savePromise) { try { await savePromise; } catch (e) { } } // 진행 중인 자동 저장이 끝난 뒤 제출
   if (auto) { document.querySelectorAll('textarea').forEach(t => { t.disabled = true; }); await new Promise(res => setTimeout(res, Math.random() * 12000)); } // 시간 종료 때 한꺼번에 몰리지 않게 분산
   $('#mSubmit').classList.add('hidden');
-  $('#busyTitle').textContent = auto ? '⏰ 시간이 끝나 자동으로 제출하고 있어요' : '제출하고 채점하고 있어요';
+  $('#busyTitle').textContent = auto ? '⏰ 시간이 끝나 자동으로 제출하고 있어요' : '답안을 제출하고 있어요';
   $('#busyErr').replaceChildren(); $('.spinner').classList.remove('hidden');
   $('#mBusy').classList.remove('hidden');
   let r = null;
@@ -232,7 +232,7 @@ function showResult() {
   if (!S.showResult) {
     sum.append(el('div', { class: 'msg okm' }, '답안이 잘 제출되었어요. 채점 결과는 선생님이 확인한 뒤 안내해 주세요.'));
   } else if (pending) {
-    sum.append(el('div', { class: 'msg info' }, '채점이 아직 끝나지 않았어요. 잠시 뒤 [결과 새로고침]을 눌러 주세요. (답안은 이미 안전하게 저장됐어요)'));
+    sum.append(el('div', { class: 'msg okm' }, '답안이 안전하게 제출되었어요. 채점은 선생님이 진행한 뒤 안내해 줘요. 아래에서 내 답안을 PDF로 저장할 수 있어요.'));
   } else {
     const pct = R.max ? R.total / R.max * 100 : 0, [label, cls] = levelOf(pct);
     sum.append(el('div', { class: 'row', style: 'align-items:flex-end;gap:16px' },

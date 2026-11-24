@@ -51,9 +51,14 @@ function render() {
 ['fClass', 'fStatus', 'fGrade'].forEach(i => $('#' + i).onchange = render);
 $('#fSearch').oninput = render; $('#reload').onclick = () => loadStatus();
 $('#gradePending').onclick = async () => {
-  note('#statusMsg', '채점 중… (학생 수에 따라 몇 분 걸릴 수 있어요)', 'info');
-  const r = await adm('adminGradePending', {}, 300000);
-  note('#statusMsg', r.ok ? `${r.n}명 채점했어요.` : r.error, r.ok ? 'okm' : 'err'); loadStatus(true);
+  const cls = $('#fClass').value, btn = $('#gradePending');
+  const waiting = LIST.filter(s => (!cls || String(s.cls) === cls) && (s.grade === '대기' || String(s.grade).indexOf('임시') === 0)).length;
+  if (!waiting) return note('#statusMsg', (cls ? cls + '반에' : '') + ' 채점할 답안이 없어요.', 'info');
+  if (!confirm(`${cls ? cls + '반' : '전체'} 제출 답안 ${waiting}명을 지금 채점할까요? (AI 키를 사용해요)`)) return;
+  btn.disabled = true; note('#statusMsg', '채점 중… (한 번에 약 3분까지 진행돼요. 창을 닫지 마세요)', 'info');
+  const r = await adm('adminGradePending', { cls }, 330000);
+  btn.disabled = false;
+  note('#statusMsg', r.ok ? `${r.n}명을 채점했어요.` + (r.left ? ` 아직 ${r.left}명이 남았어요. [채점하기]를 한 번 더 눌러 주세요.` : ' 모두 끝났어요.') : r.error, r.ok ? 'okm' : 'err'); loadStatus(true);
 };
 
 /* ───── 상세 ───── */
