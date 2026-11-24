@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>이탈 현황 모니터</title>
+<link rel="stylesheet" href="css/monitor.css">
+</head>
+<body>
+
+<div id="gate" class="gate hidden">
+  <div class="gate-card">
+    <h2>🔒 교사 비밀번호</h2>
+    <input id="pw" type="password" autocomplete="current-password" placeholder="교사 비밀번호">
+    <div id="pwErr" class="err"></div>
+    <button id="pwBtn">열기</button>
+  </div>
+</div>
+
+<div id="mon" class="hidden">
+  <header class="top">
+    <h1 id="title">페이지 이탈 현황</h1>
+    <select id="cls" aria-label="반 선택"></select>
+    <div class="pills" id="pills"></div>
+    <span class="upd" id="upd"></span>
+  </header>
+  <div class="legend">카드 숫자 = 화면 이탈 <b>횟수</b> · 아래 시간 = 벗어나 있던 <b>누적 시간</b> · <b>−</b> 버튼은 실수로 기록된 횟수를 1회 줄여요</div>
+  <main class="grid" id="grid"></main>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/monitor.js"></script>
+</body>
+</html>
