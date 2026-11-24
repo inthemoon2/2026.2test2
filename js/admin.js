@@ -269,3 +269,11 @@ function tickMonitor() {
   });
 }
 $('#mClass').onchange = renderMonitor; $('#mOnly').onchange = renderMonitor;
+
+/* ───── 이탈 모니터 화면 열기 (별도 창) ───── */
+function openMonitorWindow() {
+  const c = $('#fClass').value, st = LIST.find(x => String(x.cls) === c), key = st ? String(st.sid).slice(0, 2) : '';
+  window.open('monitor.html' + (key ? '?class=' + key : ''), 'monitorWin', 'width=1280,height=820,resizable=yes,scrollbars=yes');
+}
+$('#openMonitor').onclick = openMonitorWindow;
+$('#popMonitor').onclick = openMonitorWindow;
