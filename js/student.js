@@ -112,7 +112,7 @@ function showWrite() {
   updLeaveBadge();
   stopTimers();
   tickTimer = setInterval(tick, 500); tick();
-  saveTimer = setInterval(() => saveNow(), 20000);
+  saveTimer = setInterval(() => saveNow(), 25000);
 }
 function stopTimers() { clearInterval(tickTimer); clearInterval(saveTimer); tickTimer = saveTimer = null; }
 
@@ -129,10 +129,13 @@ function tick() {
   if (ms <= 0 && !submitting) doSubmit(true);
 }
 
+let savePromise = null;
 async function saveNow() {
   if (!S || S.status !== 'running' || submitting) return;
+  const body = dirty ? { answers } : {}; // 바뀐 게 없으면 '살아있음' 신호만 가볍게 보냄
   dirty = false;
-  const r = await sapi('save', { answers }, 30000);
+  savePromise = sapi('save', body, 30000);
+  const r = await savePromise;
   const n = $('#savedAt');
   if (r.ok) n.textContent = '✔ 자동 저장됨 ' + new Date().toLocaleTimeString('ko-KR');
   else { dirty = true; n.textContent = '⚠ 저장 실패 — 인터넷을 확인하세요 (내용은 이 컴퓨터에 임시 보관 중)'; if (r.timeup || r.done) doSubmit(true); }
@@ -192,16 +195,18 @@ $('#mSubmitYes').onclick = () => { $('#mSubmit').classList.add('hidden'); doSubm
 async function doSubmit(auto) {
   if (submitting) return;
   submitting = true; stopTimers(); lsSet();
+  if (savePromise) { try { await savePromise; } catch (e) { } } // 진행 중인 자동 저장이 끝난 뒤 제출
+  if (auto) { document.querySelectorAll('textarea').forEach(t => { t.disabled = true; }); await new Promise(res => setTimeout(res, Math.random() * 12000)); } // 시간 종료 때 한꺼번에 몰리지 않게 분산
   $('#mSubmit').classList.add('hidden');
   $('#busyTitle').textContent = auto ? '⏰ 시간이 끝나 자동으로 제출하고 있어요' : '제출하고 채점하고 있어요';
   $('#busyErr').replaceChildren(); $('.spinner').classList.remove('hidden');
   $('#mBusy').classList.remove('hidden');
   let r = null;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 6; i++) {
     r = await sapi('submit', { answers }, 120000);
     if (r.ok) break;
     if (!r.network) break;
-    await new Promise(res => setTimeout(res, 2500));
+    await new Promise(res => setTimeout(res, 2500 + Math.random() * 3000));
   }
   if (r && r.ok) {
     $('#mBusy').classList.add('hidden'); submitting = false;

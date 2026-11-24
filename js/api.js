@@ -1,5 +1,21 @@
 // 서버(Apps Script) 호출 · text/plain 으로 보내면 CORS 사전요청 없이 동작합니다.
+// 서버가 "잠금 시간 초과"처럼 일시적으로 바쁠 때는 잠깐 쉬었다가 자동으로 다시 시도합니다.
+const BUSY_RE = /잠금|[Ll]ock|too many|동시|일시적|busy/;
 async function api(action, payload, timeoutMs) {
+  let r = null;
+  for (let i = 0; i < 5; i++) {
+    r = await apiOnce(action, payload, timeoutMs);
+    if (r && r.ok === false && !r.network && typeof r.error === 'string' && BUSY_RE.test(r.error) && i < 4) {
+      await new Promise(res => setTimeout(res, 1500 * (i + 1) + Math.random() * 2500)); continue;
+    }
+    break;
+  }
+  if (r && r.ok === false && !r.network && typeof r.error === 'string' && BUSY_RE.test(r.error)) {
+    r.error = '지금 접속자가 많아 서버가 바빠요. 잠시 뒤 다시 시도해 주세요. (내용은 이 컴퓨터에 보관 중)'; r.network = true;
+  }
+  return r;
+}
+async function apiOnce(action, payload, timeoutMs) {
   if (!CONFIG.API_URL || CONFIG.API_URL.indexOf('여기에') >= 0) {
     return { ok: false, error: 'js/config.js 에 서버 주소(API_URL)가 아직 설정되지 않았어요.' };
   }
