@@ -19,8 +19,19 @@ $('#loginForm').addEventListener('submit', async e => {
   e.preventDefault();
   const sid = $('#sid').value.replace(/\s/g, '');
   if (!/^[0-9]{4}$/.test(sid)) return msg('#loginMsg', '학번은 숫자 4자리로 입력해 주세요. (예: 1101)');
+  if ($('#pwRow').classList.contains('hidden')) { // 1단계: 학번만 입력 → 처음이면 바로 비밀번호 만들기, 이미 만들었다면 그때 비밀번호 칸을 보여 줌
+    $('#loginBtn').disabled = true; msg('#loginMsg', '확인하는 중…', 'info');
+    const w = await api('who', { sid });
+    $('#loginBtn').disabled = false;
+    if (w.needSetup) { msg('#loginMsg', ''); pendingSid = sid; return showSetup(w); }
+    if (w.ok || /알 수 없는 요청/.test(w.error || '')) { showPwRow(); return; }
+    return msg('#loginMsg', w.error);
+  }
   await doLogin(sid, $('#lpw').value);
 });
+function showPwRow() { $('#pwRow').classList.remove('hidden'); $('#loginBtn').textContent = '로그인'; msg('#loginMsg', '비밀번호를 입력해 주세요.', 'info'); $('#lpw').focus(); }
+function hidePwRow() { $('#pwRow').classList.add('hidden'); $('#lpw').value = ''; $('#loginBtn').textContent = '확인'; }
+$('#sid').addEventListener('input', hidePwRow);
 let pendingSid = '';
 async function doLogin(sid, pw, silent) {
   $('#loginBtn').disabled = true; msg('#loginMsg', silent ? '' : '확인하는 중…', 'info');
@@ -82,7 +93,7 @@ $('#startBtn').onclick = async () => {
   applyState(r);
 };
 $('#introBack').onclick = logout;
-function logout() { stopTimers(); sessionStorage.removeItem('sid'); sessionStorage.removeItem('pw'); PW = ''; S = null; $('#sid').value = ''; $('#lpw').value = ''; pdfOffered = false; show('login'); }
+function logout() { stopTimers(); clearInterval(resTimer); hidePwRow(); sessionStorage.removeItem('sid'); sessionStorage.removeItem('pw'); PW = ''; S = null; $('#sid').value = ''; $('#lpw').value = ''; pdfOffered = false; show('login'); }
 
 /* ───── 작성 ───── */
 function showWrite() {
@@ -224,8 +235,15 @@ async function doSubmit(auto) {
 function levelOf(p) { return p >= 80 ? ['아주 잘 이해했어요 🎉', 'ok'] : p >= 60 ? ['대체로 이해했어요 👍', 'ok'] : p >= 40 ? ['조금 더 복습해 봐요 📖', 'warn'] : ['내 역할을 다시 한번 살펴봐요 🔎', 'danger']; }
 const r1 = n => Math.round(n * 10) / 10;
 
+let resTimer = null;
+function updRemain() {
+  const box = $('#resRemain'), ms = S.endsAt ? S.endsAt - (Date.now() + offset) : 0;
+  if (ms > 0) { box.className = 'msg info'; box.textContent = '⏱ 남은 시험 시간 ' + String(Math.floor(Math.ceil(ms / 1000) / 60)).padStart(2, '0') + ':' + String(Math.ceil(ms / 1000) % 60).padStart(2, '0'); }
+  else { box.className = 'msg okm'; box.textContent = '⏱ 시험 시간이 끝났어요.'; clearInterval(resTimer); }
+}
 function showResult() {
   stopTimers();
+  clearInterval(resTimer); updRemain(); resTimer = setInterval(updRemain, 500);
   const R = S.result, pending = R.gradeStatus === '대기' || R.gradeStatus === '';
   $('#resMeta').textContent = `${S.cls}반 ${S.team}조 · 학번 ${S.sid} · 제출 ${R.submittedAt || ''}`;
   const sum = $('#resSummary'); sum.replaceChildren();
